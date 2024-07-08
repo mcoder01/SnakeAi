@@ -153,9 +153,8 @@ class Population {
             int index = constrain(k+j%3, 0, nodes[i+1]-1);
             float value = weights[i].get(j, index);
             if (value >= 0) 
-              stroke(0, 0, 150);
-            else stroke(150, 0, 0);
-            strokeWeight(map(abs(value), 0, 1, 1, 3));
+              stroke(0, 0, 255);
+            else stroke(255, 0, 0);
             line(nodeX, nodeY, nodeX+layersGap, centerY-nodesGap*(nodes[i+1]/2-index));
           }
       }
