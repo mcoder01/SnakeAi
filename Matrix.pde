@@ -98,10 +98,9 @@ class Matrix {
   
   public void mutate(float rate) {
     internalMap(index -> {
-      float value = data[index.row][index.col];
       if (random(1) < rate)
-        value = constrain(value+randomGaussian()/5, -1, 1);
-      return value;
+        return constrain(data[index.row][index.col]+randomGaussian()/5, -1, 1);
+      return data[index.row][index.col];
     });
   }
   
@@ -120,6 +119,10 @@ class Matrix {
   
   public float get(int row, int col) {
     return data[row][col];
+  }
+  
+  public void set(int row, int col, float value) {
+    data[row][col] = value;
   }
   
   public float[] toArray() {

@@ -1,6 +1,7 @@
 class Model {
   private int[] layers;
   private Matrix[] weights;
+  private Matrix input, output;
   
   public Model(int... layers) {
     this.layers = layers;
@@ -15,11 +16,13 @@ class Model {
   }
   
   public Matrix forward(Matrix x) {
+    input = x;
     Matrix y = x.transpose();
     for (int i = 0; i < weights.length; i++)
       y = y.addColumn(1).times(weights[i]).map(this::relu);
     
-    return y.transpose();
+    output = y.transpose();
+    return output;
   }
   
   private float relu(float value) {
@@ -36,5 +39,8 @@ class Model {
   public void mutate(float rate) {
     for (Matrix m : weights)
       m.mutate(rate);
+  }
+  
+  public void show(float x, float y) {
   }
 }

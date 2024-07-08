@@ -8,7 +8,7 @@ class Snake extends ArrayList<MatrixIndex> {
   public Snake() {
     super(3);
     scene = new Scene();
-    brain = new Model(24, 32, 32, 4);
+    brain = new Model(15, 16, 16, 3);
     brain.randomInit();
     reset(false);
   }
@@ -55,9 +55,9 @@ class Snake extends ArrayList<MatrixIndex> {
         add(get(size()-1).clone());
         score++;
         scene.food = null;
-        steps += 100;
-        if (steps > 500)
-          steps = 500;
+        if (steps < 100) steps += 50;
+        if (steps < 500 || score > 40)
+          steps += 100;
       }
       
       steps--;
@@ -67,9 +67,9 @@ class Snake extends ArrayList<MatrixIndex> {
   }
   
   private void lookAndThink() {
-    float[] inputs = new float[24];
-    for (int i = 0; i < 8; i++) {
-      PVector dir = PVector.fromAngle(i/8.0*TWO_PI);
+    float[] inputs = new float[15];
+    for (int i = 0; i < 5; i++) {
+      PVector dir = PVector.fromAngle(i/4.0*PI-HALF_PI+orientation*HALF_PI);
       int drow = (int) (-dir.y/abs(dir.y));
       int dcol = (int) (dir.x/abs(dir.x));
       lookAt(inputs, i*3, drow, dcol);
@@ -77,7 +77,13 @@ class Snake extends ArrayList<MatrixIndex> {
     
     Matrix x = new Matrix(inputs);
     Matrix y = brain.forward(x);
-    orientate(y.argmax());
+    turn(y.argmax()-1);
+  }
+  
+  public void turn(int dir) {
+    orientation += dir;
+    if (orientation == 4) orientation = 0;
+    else if (orientation == -1) orientation = 3;
   }
   
   public void orientate(int dir) {
@@ -90,14 +96,18 @@ class Snake extends ArrayList<MatrixIndex> {
   private void lookAt(float[] vision, int i, int rowDir, int colDir) {
     MatrixIndex index = get(0).clone();
     float distance = 0;
+    boolean foundTail = false, foundFood = false;
     do {
       index.row += rowDir;
       index.col += colDir;
       distance++;
-      if (vision[i+1] == 0 && scene.board[index.row][index.col] == 2)
-        vision[i+1] = 1;
-      else if (vision[i+2] == 0 && scene.board[index.row][index.col] == 3)
+      if (!foundTail && scene.board[index.row][index.col] == 2) {
+        vision[i+1] = 1.0/distance;
+        foundTail = true;
+      } else if (!foundFood && scene.board[index.row][index.col] == 3) {
         vision[i+2] = 1;
+        foundFood = true;
+      }
     } while(scene.board[index.row][index.col] != 1);
     vision[i] = 1.0/distance;
   }
@@ -113,11 +123,9 @@ class Snake extends ArrayList<MatrixIndex> {
   }
   
   public float fitness() {
-    float fitness = pow(lifeTime, 2);
     if (score < 10)
-      fitness *= pow(2, score);
-    else fitness *= pow(2, 10)*(score-9);
-    return fitness;
+      return pow(lifeTime, 2)*pow(2, score);
+    return pow(lifeTime, 2)*pow(2, 10)*(score-9);
   }
   
   public boolean isAlive() {
