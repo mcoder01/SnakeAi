@@ -22,14 +22,7 @@ The directions are calculated starting from the orientation of the snake, in ord
 Each generation consists of 2000 snakes resulting from a combination of the best ones taken from the previous generation. The first generation starts with snakes having a brain that is a randomly initialized neural network. When all the snakes are dead, the algorithm calculates their ***fitnesses*** and selects the best one which is immediately added in the new generation of snakes, while its performance is shown on the screen. For each of the remaining, the algorithm randomly chooses two parent snakes, with a probability which depends on their fitnesses, to generate a child snake with a brain resulting from the ***crossover*** between its parents brains and the following ***mutation***.
 
 ### Fitness Function
-The fitness function used for this algorithm depends on the score achieved by the snake and its lifetime, and it is defined as follow:
-$$
-f(score, lifetime) = 
-\begin{cases}
-    2^{score} \cdot lifetime^2 & \text{if} \space score < 10 \\
-    2^{10} \cdot lifetime^2 \cdot (score-9) & \text{otherwise} 
-\end{cases}
-$$
+The fitness function used for this algorithm depends on the score achieved by the snake and its lifetime. When the score is less than 10 it is equal to $2^{score} \cdot lifetime^2$, otherwise it equals $2^{10} \cdot lifetime^2 \cdot (score-9)$. 
 
 ### Crossover
 The crossover allows the generation of a snake starting from two. In this project, the crossover function combines a more or less large portion of the weights of one snake's neural network with the other portion of weights from the second snake's neural network. The sizes of the two portions of weights are randomly chooses each time.
