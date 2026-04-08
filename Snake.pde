@@ -1,16 +1,18 @@
 class Snake extends ArrayList<MatrixIndex> {
-  private Scene scene;
-  private int orientation, score;
+  public Scene scene;
+  protected int id, orientation, score;
+  private boolean alive;
+  protected String deathCause;
   
-  private Model brain;
-  private int steps, lifeTime;
+  public Snake(int id) {
+    super(3);
+    this.id = id;
+    scene = new Scene();
+    reset(false);
+  }
   
   public Snake() {
-    super(3);
-    scene = new Scene();
-    brain = new Model(15, 16, 16, 3);
-    brain.randomInit();
-    reset(false);
+    this(0);
   }
   
   public void reset(boolean replay) {
@@ -28,8 +30,7 @@ class Snake extends ArrayList<MatrixIndex> {
     
     orientation = 0;
     score = 0;
-    steps = 200;
-    lifeTime = 0;
+    alive = true;
   }
   
   public void update() {
@@ -41,43 +42,31 @@ class Snake extends ArrayList<MatrixIndex> {
     for (int i = size()-1; i > 0; i--)
       set(i, get(i-1).clone());
     
-    lookAndThink();
-    MatrixIndex index = get(0);
-    if (orientation == 0) index.col++;
-    else if (orientation == 1) index.row--;
-    else if (orientation == 2) index.col--;
-    else index.row++;
+    MatrixIndex head = get(0);
+    if (orientation == 0) head.col++;
+    else if (orientation == 1) head.row--;
+    else if (orientation == 2) head.col--;
+    else head.row++;
     
-    if (scene.board[index.row][index.col] == 1 || scene.board[index.row][index.col] == 2)
-      steps = 0;
-    else {
-      if (scene.board[index.row][index.col] == 3) {
-        add(get(size()-1).clone());
-        score++;
-        scene.food = null;
-        if (steps < 100) steps += 50;
-        if (steps < 500 || score > 40)
-          steps += 100;
-      }
-      
-      steps--;
-      lifeTime++;
-      scene.board[index.row][index.col] = 2;
-    }
+    if (scene.board[head.row][head.col] == 1)
+      kill("wall");
+    else if (scene.board[head.row][head.col] == 2)
+      kill("bite");
+    else if (scene.board[head.row][head.col] == 3)
+      eat();
+    
+    scene.board[head.row][head.col] = 2;
   }
   
-  private void lookAndThink() {
-    float[] inputs = new float[15];
-    for (int i = 0; i < 5; i++) {
-      PVector dir = PVector.fromAngle(i/4.0*PI-HALF_PI+orientation*HALF_PI);
-      int drow = (int) (-dir.y/abs(dir.y));
-      int dcol = (int) (dir.x/abs(dir.x));
-      lookAt(inputs, i*3, drow, dcol);
-    }
-    
-    Matrix x = new Matrix(inputs);
-    Matrix y = brain.forward(x);
-    turn(y.argmax()-1);
+  public void kill(String cause) {
+    deathCause = cause;
+    alive = false;
+  }
+  
+  public void eat() {
+    add(get(size()-1).clone());
+    score++;
+    scene.food = null;
   }
   
   public void turn(int dir) {
@@ -87,48 +76,36 @@ class Snake extends ArrayList<MatrixIndex> {
   }
   
   public void orientate(int dir) {
-    if (dir == orientation || dir == (orientation+2)%4
-        || dir < 0 || dir > 3) 
-        return;
-    orientation = dir;
+    if (isOrientationValid(dir))
+      orientation = dir;
   }
   
-  private void lookAt(float[] vision, int i, int rowDir, int colDir) {
-    MatrixIndex index = get(0).clone();
-    float distance = 0;
-    boolean foundTail = false, foundFood = false;
-    do {
-      index.row += rowDir;
-      index.col += colDir;
-      distance++;
-      if (!foundTail && scene.board[index.row][index.col] == 2) {
-        vision[i+1] = 1.0/distance;
-        foundTail = true;
-      } else if (!foundFood && scene.board[index.row][index.col] == 3) {
-        vision[i+2] = 1;
-        foundFood = true;
-      }
-    } while(scene.board[index.row][index.col] != 1);
-    vision[i] = 1.0/distance;
-  }
-  
-  public Snake crossover(Snake partner) {
-    Snake snake = new Snake();
-    snake.brain = brain.crossover(partner.brain);
-    return snake;
-  }
-  
-  public void mutate(float rate) {
-    brain.mutate(rate);
-  }
-  
-  public float fitness() {
-    if (score < 10)
-      return pow(lifeTime, 2)*pow(2, score);
-    return pow(lifeTime, 2)*pow(2, 10)*(score-9);
+  public boolean isOrientationValid(int dir) {
+    return dir != (orientation+2)%4 && dir >= 0 && dir <= 3;
   }
   
   public boolean isAlive() {
-    return steps > 0;
+    return alive;
+  }
+  
+  public float showStats(float x, float y) {
+    textAlign(LEFT, CENTER);
+    fill(255);
+    noStroke();
+    
+    float currY = y;
+    textSize(24);
+    if (id > 0) {
+      text("SNAKE #" + id, x, currY);
+      currY += 35;
+      textSize(18);
+    }
+    
+    text("SCORE: " + score, x, currY);
+    return currY+25;
+  }
+  
+  public void setId(int id) {
+    this.id = id;
   }
 }

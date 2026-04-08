@@ -3,18 +3,26 @@ import java.util.function.Consumer;
 
 class Matrix {
   private float[][] data;
-  private int rows, cols;
+  public int rows, cols;
   
-  public Matrix(int rows, int cols) {
+  public Matrix(float[][] data, int rows, int cols) {
+    this.data = data;
     this.rows = rows;
     this.cols = cols;
-    data = new float[rows][cols];
+  }
+  
+  public Matrix(int rows, int cols) {
+    this(new float[rows][cols], rows, cols);
   }
   
   public Matrix(float... data) {
     this(data.length, 1);
     for (int i = 0; i < rows; i++)
       this.data[i][0] = data[i];
+  }
+  
+  public Matrix(SerializableMatrix serialMatrix) {
+    this(serialMatrix.data, serialMatrix.rows, serialMatrix.cols);
   }
   
   private void forEach(Consumer<MatrixIndex> action) {
@@ -50,6 +58,14 @@ class Matrix {
     return result;
   }
   
+  public Matrix scale(float factor) {
+    return map(value -> value*factor);
+  }
+  
+  public Matrix sub(Matrix m) {
+    return add(m.scale(-1));
+  }
+  
   public Matrix times(Matrix m) {
     if (cols != m.rows) return null;
     
@@ -70,48 +86,35 @@ class Matrix {
     return result;
   }
   
-  public int argmax() {
+  public MatrixIndex argmax() {
     MatrixIndex maxIndex = new MatrixIndex(0, 0, cols);
     forEach(index -> {
-      if (data[index.row][index.col] > data[maxIndex.row][maxIndex.col]) {
+      if (get(index) > get(maxIndex)) {
         maxIndex.row = index.row;
         maxIndex.col = index.col;
+        maxIndex.value = index.value;
       }
     });
-        
-    return maxIndex.row*cols+maxIndex.col;
-  }
-  
-  public Matrix crossover(Matrix partner) {
-    int randRow = floor(random(rows));
-    int randCol = floor(random(cols));
     
-    Matrix matrix = new Matrix(rows, cols);
-    matrix.internalMap(index -> {
-      if (index.row < randRow || (index.row == randRow && index.col <= randCol))
-        return data[index.row][index.col];
-      return partner.data[index.row][index.col];
-    });
-    
-    return matrix;
+    return maxIndex;
   }
   
   public void mutate(float rate) {
     internalMap(index -> {
       if (random(1) < rate)
-        return constrain(data[index.row][index.col]+randomGaussian()/5, -1, 1);
+        return random(-1, 1);
       return data[index.row][index.col];
     });
   }
   
-  public Matrix addColumn(float... values) {
-    if (values.length != rows) return null;
+  public Matrix addRow(float... values) {
+    if (values.length != cols) return null;
     
-    Matrix result = new Matrix(rows, cols+1);
+    Matrix result = new Matrix(rows+1, cols);
     result.internalMap(index -> {
-      if (index.col < cols)
+      if (index.row < rows)
         return data[index.row][index.col];
-      return values[index.row];
+      return values[index.col];
     });
     
     return result;
@@ -121,8 +124,16 @@ class Matrix {
     return data[row][col];
   }
   
+  public float get(MatrixIndex index) {
+    return get(index.row, index.col);
+  }
+  
   public void set(int row, int col, float value) {
     data[row][col] = value;
+  }
+  
+  public void set(MatrixIndex index, float value) {
+    set(index.row, index.col, value);
   }
   
   public float[] toArray() {
@@ -130,4 +141,24 @@ class Matrix {
     forEach(index -> array[index.row*cols+index.col] = data[index.row][index.col]);
     return array;
   }
+  
+  public Matrix clone() {
+    return map(value -> value);
+  }
+  
+  public SerializableMatrix serialize() {
+    return new SerializableMatrix(data, rows, cols);
+  }
+}
+
+Matrix[] crossover(Matrix father, Matrix mother) {
+  Matrix child1 = new Matrix(father.rows, father.cols);
+  Matrix child2 = new Matrix(father.rows, father.cols);
+  int randIndex = floor(random(father.rows*father.cols));
+  father.forEach(idx -> {
+    child1.set(idx, idx.value < randIndex ? father.get(idx) : mother.get(idx));
+    child2.set(idx, idx.value < randIndex ? mother.get(idx) : father.get(idx));
+  });
+  
+  return new Matrix[] {child1, child2};
 }

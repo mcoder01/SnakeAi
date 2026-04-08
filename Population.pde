@@ -1,6 +1,7 @@
 class Population {
-  private Snake[] snakes;
+  private SmartSnake[] snakes;
   private int alive, generation, highscore;
+  private SmartSnake showing;
   
   private float[] fitness;
   private float fitnessSum, bestFitness;
@@ -8,166 +9,170 @@ class Population {
   private boolean newRecord, newFitness;
   
   public Population(int size) {
-    snakes = new Snake[size];
+  	snakes = new SmartSnake[size];
     for (int i = 0; i < size; i++)
-      snakes[i] = new Snake();
-      
-    generation = 1;
+  	  snakes[i] = new SmartSnake(i+1);
+  
     fitness = new float[size];
+  	generation = 1;
+  }
+  
+  public Population(SerializablePopulation serialPeople) {
+    snakes = new SmartSnake[serialPeople.snakes.length];
+    for (int i = 0; i < snakes.length; i++)
+      snakes[i] = new SmartSnake(serialPeople.snakes[i]);
+      
+    highscore = serialPeople.highscore;
+    bestFitness = serialPeople.bestFitness;
+    generation = serialPeople.generation;
+    fitness = new float[snakes.length];
+  }
+  
+  private String nextData(BufferedReader reader, String def) {
+    try {
+      return reader.readLine().split("=")[1];
+    } catch(IOException e) {
+      return def;
+    }
   }
   
   public void update() {
-    alive = 0;
-    for (Snake snake : snakes) {
-      snake.scene.update();
-      snake.update();
-        
-      if (snake.isAlive())
-        alive++;
+    if (showing == null)
+      showing = snakes[0];
+      
+  	alive = 0;
+  	for (SmartSnake snake : snakes) {
+  	  snake.scene.update();
+  	  snake.update();
+  
+      if (snake.score > highscore) {
+        highscore = snake.score;
+        newRecord = true;
+        showing = snake;
+      }
+  		
+  	  if (snake.isAlive()) {
+  		  alive++;
+        if (!showing.isAlive() && snake.score > showing.score)
+          showing = snake;
+      }
+  	}
+  	
+  	if (alive == 0) {
+      calculateFitness();
+      updateStats();
+      saveProgress();
+  	  reproduce();
+      showing = null;
+  	  newRecord = false;
+  	}
+  }
+  
+  private void updateStats() {
+    int best = findBest();
+    updateStats(best);
+  }
+  
+  private SerializablePopulation serialize() {
+    SerializableSnake[] serialSnakes = new SerializableSnake[snakes.length];
+    for (int i = 0; i < snakes.length; i++)
+      serialSnakes[i] = snakes[i].serialize();
+    return new SerializablePopulation(serialSnakes, highscore, bestFitness, generation);
+  }
+  
+  public void saveProgress() {
+    try {
+      OutputStream out = createOutput(peoplePath);
+      ObjectOutputStream stream = new ObjectOutputStream(out);
+      stream.writeObject(serialize());
+      stream.close();
+    } catch(IOException e) {
+      println("Unable to save the model!");
+      e.printStackTrace();
     }
-    
-    if (snakes[0].score > highscore) {
-      highscore = snakes[0].score;
-      newRecord = true;
-    }
-    
-    if (alive == 0) {
-      reproduce();
-      newRecord = false;
-    }
+  }
+  
+  private void registerChild(SmartSnake[] snakes, int idx, SmartSnake child) {
+    child.mutate(mutationRate);
+    snakes[idx] = child;
   }
   
   private void reproduce() {
-    calculateFitness();
-    
-    int bestIndex = findBest();
-    if (fitness[bestIndex] > bestFitness) {
-      bestFitness = fitness[bestIndex];
-      newFitness = true;
-    } else newFitness = false;
-    
-    Snake[] newGen = new Snake[snakes.length];
-    newGen[0] = snakes[bestIndex];
-    newGen[0].reset(true);
-    for (int i = 1; i < snakes.length; i++) {
-      newGen[i] = pickOne().crossover(pickOne());
-      newGen[i].mutate(mutationRate);
+  	SmartSnake[] newGen = new SmartSnake[snakes.length];
+  	for (int i = 0; i < snakes.length/2; i++) {
+      int idx = i*2;
+      SmartSnake[] children = crossover(pickOne(), pickOne(), idx+1, idx+2);
+      registerChild(newGen, idx, children[0]);
+      registerChild(newGen, idx+1, children[1]);
     }
-    
-    snakes = newGen;
-    generation++; //<>//
+  	
+  	snakes = newGen;
+  	generation++;
   }
   
   private void calculateFitness() {
-    fitnessSum = 0;
-    for (int i = 0; i < snakes.length; i++) {
-      fitness[i] = snakes[i].fitness();
-      fitnessSum += fitness[i];
-    }
+  	fitnessSum = 0;
+  	for (int i = 0; i < snakes.length; i++) {
+  	  fitness[i] = snakes[i].fitness();
+  	  fitnessSum += fitness[i];
+  	}
   }
   
   private int findBest() {
-    return new Matrix(fitness).argmax();
+    return new Matrix(fitness).argmax().value;
   }
   
-  private Snake pickOne() {
-    float r = random(fitnessSum);
-    int index = 0;
-    while(r >= 0 && index < fitness.length)
-      r -= fitness[index++];
-    return snakes[index-1];
+  private void updateStats(int best) {
+    if (fitness[best] > bestFitness) {
+      bestFitness = fitness[best];
+      newFitness = true;
+    } else newFitness = false; 
   }
   
-  public void showBest(float x, float y) {
-    snakes[0].scene.show(x, y);
+  private SmartSnake pickOne() {
+  	float r = random(fitnessSum);
+  	int index = 0;
+  	while(r >= 0 && index < fitness.length)
+  	  r -= fitness[index++];
+  	return snakes[index-1];
   }
   
   public void showStats(float x, float y) {
     textAlign(LEFT, CENTER);
     fill(255);
     noStroke();
-    
-    textSize(36);
-    text("SCORE: " + snakes[0].score, x, y);
-    
     textSize(18);
     
     if (newRecord) fill(255, 220, 0);
-    text("HIGHSCORE: " + highscore, x, y+45);
-    
-    if (snakes[0].steps == 0) fill(255, 0, 0);
-    else if (snakes[0].steps < 100) fill(255, 150, 0);
-    else fill(255);
-    text("LEFT MOVES: " + snakes[0].steps, x, y+70);
+    text("HIGHSCORE: " + highscore, x, y);
     
     fill(255);
-    text("ALIVE SNAKES: " + alive, x, y+95);
+    text("ALIVE SNAKES: " + alive, x, y+25);
     
     if (newFitness) fill(0, 200, 0);
     else fill(255);
-    text("BEST FITNESS: " + bestFitness, x, y+120);
+    text("BEST FITNESS: " + bestFitness, x, y+50);
     
     fill(255);
-    text("GENERATION: " + generation, x, y+145);
+    text("GENERATION: " + generation, x, y+75);
   }
   
-  public void showBrain(float x, float y, float scale) {
-    int[] nodes = snakes[0].brain.layers;
-    Matrix[] weights = snakes[0].brain.weights;
-    
-    float layersGap = 120*scale;
-    float nodesGap = 25*scale;
-    float h = 23*nodesGap;
-    float nodeRadius = 15*scale;
-    float textSize = 14*(scale+0.1);
-    
-    Matrix[] outputs = new Matrix[nodes.length];
-    outputs[0] = snakes[0].brain.input;
-    for (int i = 1; i < nodes.length-1; i++)
-      outputs[i] = new Matrix(nodes[i], 1);
-      
-    Matrix output = new Matrix(nodes[nodes.length-1], 1);
-    output.set(snakes[0].brain.output.argmax(), 0, 1);
-    outputs[nodes.length-1] = output;
-    
-    String[] inLabels = {"E", "NE", "N", "NO", "O"};
-    String[] outLabels = {"RIGHT", "FORWARD", "LEFT"};
-    textSize(textSize);
-    for (int i = 0; i < nodes.length; i++) {
-      float centerY = y+h/2;
-      for (int j = 0; j < nodes[i]; j++) {
-        float nodeX = x+i*layersGap;
-        float nodeY = centerY-nodesGap*(nodes[i]/2-j);
-        if (i == 0 && j%3 == 0) {
-          textAlign(RIGHT, CENTER);
-          fill(255);
-          text(inLabels[j/3], nodeX-20, nodeY);
-        } else if (i == nodes.length-1) {
-          textAlign(LEFT, CENTER);
-          fill(255);
-          text(outLabels[j], nodeX+20, nodeY);
-        }
-        
-        if (i < nodes.length-1)
-          for (int k = 0; k < nodes[i+1]; k += 3) {
-            int index = constrain(k+j%3, 0, nodes[i+1]-1);
-            float value = weights[i].get(j, index);
-            if (value >= 0) 
-              stroke(0, 0, 255);
-            else stroke(255, 0, 0);
-            line(nodeX, nodeY, nodeX+layersGap, centerY-nodesGap*(nodes[i+1]/2-index));
-          }
-      }
-      
-      noStroke();
-      for (int j = 0; j < nodes[i]; j++) {
-        float nodeX = x+i*layersGap;
-        float nodeY = centerY-nodesGap*(nodes[i]/2-j);
-        if (outputs[i].get(j, 0) >= 0.5)
-          fill(0, 255, 0);
-        else fill(255);
-        circle(nodeX, nodeY, nodeRadius);
-      }
-    }
+  public SmartSnake getShowing() {
+    return showing;
+  }
+}
+
+Population loadFromFile(String path) {
+  try {
+    InputStream in = createInput(path);
+    if (in == null) return null;
+    ObjectInputStream stream = new ObjectInputStream(in);
+    SerializablePopulation serialPeople = (SerializablePopulation) stream.readObject();
+    stream.close();
+    return new Population(serialPeople);
+  } catch(IOException | ClassNotFoundException e) {
+    println("Unable to load the model!");
+    e.printStackTrace();
+    return null;
   }
 }

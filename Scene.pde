@@ -64,4 +64,33 @@ class Scene {
     
     popMatrix();
   }
+  
+  public int reachableFreeCells(MatrixIndex source) {
+    int reachableFreeCells = 0;
+    boolean[][] visited = new boolean[rows][cols];
+    LinkedList<MatrixIndex> queue = new LinkedList<>();
+    queue.add(source);
+    while(queue.size() > 0) {
+      MatrixIndex cell = queue.poll();
+      if (board[cell.row][cell.col] == 1 || board[cell.row][cell.col] == 2)
+        continue;
+        
+      if (visited[cell.row][cell.col]) 
+        continue;
+      
+      visited[cell.row][cell.col] = true;
+      reachableFreeCells++;
+      
+      queue.add(cell.plus(-1, 0));
+      queue.add(cell.plus(0, 1));
+      queue.add(cell.plus(1, 0));
+      queue.add(cell.plus(0, -1));
+    }
+    
+    return reachableFreeCells;
+  }
+  
+  public int totalSpace() {
+    return (rows-2)*(cols-2);
+  }
 }
