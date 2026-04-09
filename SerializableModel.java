@@ -1,5 +1,5 @@
 import java.util.function.Function;
-import java.io.Serializable;
+import java.io.*;
 
 interface ActivationFunc extends Function<Float, Float>, Serializable {};
 
@@ -32,25 +32,50 @@ class SerializableModel implements Serializable {
   }
 };
 
-class SerializableSnake implements Serializable {
-  public int id;
-  public SerializableModel brain;
+class SerializablePopulation implements Serializable {
+  public SerializableModel[] brains;
+  public int generation;
   
-  public SerializableSnake(int id, SerializableModel brain) {
-    this.id = id;
-    this.brain = brain;
+  public SerializablePopulation(SerializableModel[] brains, int generation) {
+    this.brains = brains;
+    this.generation = generation;
   }
 };
 
-class SerializablePopulation implements Serializable {
-  public SerializableSnake[] snakes;
-  public int highscore, generation;
-  public float bestFitness;
+class Champion implements Serializable {
+  public SerializableModel brain;
+  public int score;
+  public float fitness;
   
-  public SerializablePopulation(SerializableSnake[] snakes, int highscore, float bestFitness, int generation) {
-    this.snakes = snakes;
-    this.highscore = highscore;
-    this.bestFitness = bestFitness;
-    this.generation = generation;
+  public Champion(SerializableModel brain, int score, float fitness) {
+    this.brain = brain;
+    this.score = score;
+    this.fitness = fitness;
+  }
+};
+
+class Serializer {
+  public static void save(String path, Serializable obj) {
+    try {
+      FileOutputStream out = new FileOutputStream(path);
+      ObjectOutputStream stream = new ObjectOutputStream(out);
+      stream.writeObject(obj);
+      stream.close();
+    } catch(IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static Object load(String path) {
+    try {
+      FileInputStream in = new FileInputStream(path);
+      ObjectInputStream stream = new ObjectInputStream(in);
+      Object obj = stream.readObject();
+      stream.close();
+      return obj;
+    } catch(IOException | ClassNotFoundException e) {
+      System.out.println("Unable to load the object!");
+      return null;
+    }
   }
 };

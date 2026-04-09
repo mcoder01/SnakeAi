@@ -8,20 +8,18 @@ class Snake extends ArrayList<MatrixIndex> {
     super(3);
     this.id = id;
     scene = new Scene();
-    reset(false);
   }
   
   public Snake() {
     this(0);
   }
   
-  public void reset(boolean replay) {
+  public void reset() {
     for (MatrixIndex index : this)
       if (scene.board[index.row][index.col] == 2)
         scene.board[index.row][index.col] = 0;
-    
     clear();
-    if (replay) scene.replay();
+    
     for (int i = 2; i >= 0; i--) {
       MatrixIndex index = new MatrixIndex(scene.rows/2, scene.cols/2+i-1, scene.cols);
       scene.board[index.row][index.col] = 2;

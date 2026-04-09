@@ -3,23 +3,22 @@ import java.util.LinkedList;
 class SmartSnake extends Snake {
   private Model brain;
   private int steps, lifeTime;
+  private final int startingSteps, foodReward;
   
   public SmartSnake(int id, Model brain) {
     super(id);
     this.brain = brain;
+    startingSteps = (int) (maxSteps*0.2);
+    foodReward = 50;
   }
   
   public SmartSnake(int id) {
     this(id, new Model(9, 16, 16, 3));
   }
   
-  public SmartSnake(SerializableSnake serialSnake) {
-    this(serialSnake.id, new Model(serialSnake.brain));
-  }
-  
-  public void reset(boolean replay) {
-    super.reset(replay);
-    steps = 100;
+  public void reset() {
+    super.reset();
+    steps = startingSteps;
     lifeTime = 0;
   }
   
@@ -57,7 +56,7 @@ class SmartSnake extends Snake {
     int rowsToFood = scene.food.row-index.row;
     int colsToFood = scene.food.col-index.col;
     if (rowsToFood*drow > 0)
-      vision[i+2] = 1.0/abs(rowsToFood); //<>//
+      vision[i+2] = 1.0/abs(rowsToFood);
     else if (colsToFood*dcol > 0)
       vision[i+2] = 1.0/abs(colsToFood);
     
@@ -76,8 +75,7 @@ class SmartSnake extends Snake {
  
   public void eat() {
     super.eat();
-    if (score < 10) steps += 50;
-    else steps = 500;
+    steps = min(steps+foodReward, maxSteps);
   }
   
   public void mutate(float rate) {
@@ -89,8 +87,9 @@ class SmartSnake extends Snake {
     float survivalReward = lifeTime*1.5;
     MatrixIndex source = get(deathCause.equals("steps") ? 0 : 1);
     float freeSpaceReward = scene.reachableFreeCells(source)*10;
-    float bitePenalty = deathCause.equals("bite") ? -score*5 : 0;
-    float stepsPenalty = score > 10 ? (steps-500)*2 : 0;
+    float bitePenalty = deathCause.equals("bite") ? -score*10 : 0;
+    int usedSteps = startingSteps+foodReward*score-steps;
+    float stepsPenalty = min(-usedSteps+foodReward*score, 0);
     return max(0, scoreReward+survivalReward+freeSpaceReward+bitePenalty+stepsPenalty);
   }
   
@@ -102,10 +101,6 @@ class SmartSnake extends Snake {
     else fill(255);
     text("LEFT MOVES: " + steps, x, currY);
     return currY+25;
-  }
-  
-  public SerializableSnake serialize() {
-    return new SerializableSnake(id, brain.serialize());
   }
 };
 

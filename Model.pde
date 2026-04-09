@@ -1,5 +1,3 @@
-import java.io.*;
-
 class Model {
   private Layer[] layers;
   private Matrix input;
@@ -19,7 +17,7 @@ class Model {
     for (int i = 0; i < layers.length; i++)
       layers[i] = new Layer(serialModel.layers[i]);
   }
-   //<>//
+  
   public Matrix forward(Matrix x) {
     input = x;
     Matrix y = x;
@@ -57,7 +55,7 @@ class Model {
         float nodeY = centerY-nodesGap*(layers[i].inputs()/2.0-j);
         for (int k = 0; k < layers[i].nodes(); k += 3) {
           int index = min(k+j%3, layers[i].nodes()-1);
-          float value = layers[i].weights.get(j, index); //<>//
+          float value = layers[i].weights.get(j, index);
           if (value >= 0) stroke(0, 0, 255);
           else stroke(255, 0, 0);
           line(nodeX, nodeY, nodeX+layersGap, centerY-nodesGap*(layers[i].nodes()/2.0-index));

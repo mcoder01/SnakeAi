@@ -1,7 +1,7 @@
 class Population {
   private SmartSnake[] snakes;
-  private int alive, generation, highscore;
-  private SmartSnake showing;
+  private int alive, highscore, generation;
+  private SmartSnake best, showing;
   
   private float[] fitness;
   private float fitnessSum, bestFitness;
@@ -18,29 +18,27 @@ class Population {
   }
   
   public Population(SerializablePopulation serialPeople) {
-    snakes = new SmartSnake[serialPeople.snakes.length];
-    for (int i = 0; i < snakes.length; i++)
-      snakes[i] = new SmartSnake(serialPeople.snakes[i]);
+    snakes = new SmartSnake[serialPeople.brains.length];
+    for (int i = 0; i < snakes.length; i++) {
+      Model brain = new Model(serialPeople.brains[i]);
+      snakes[i] = new SmartSnake(i+1, brain);
+    }
       
-    highscore = serialPeople.highscore;
-    bestFitness = serialPeople.bestFitness;
     generation = serialPeople.generation;
     fitness = new float[snakes.length];
   }
   
-  private String nextData(BufferedReader reader, String def) {
-    try {
-      return reader.readLine().split("=")[1];
-    } catch(IOException e) {
-      return def;
-    }
+  public void reset() {
+    for (Snake snake : snakes)
+      snake.reset();
+    best = snakes[0];
   }
   
   public void update() {
     if (showing == null)
       showing = snakes[0];
       
-  	alive = 0;
+    alive = 0;
   	for (SmartSnake snake : snakes) {
   	  snake.scene.update();
   	  snake.update();
@@ -53,43 +51,41 @@ class Population {
   		
   	  if (snake.isAlive()) {
   		  alive++;
-        if (!showing.isAlive() && snake.score > showing.score)
+        if (snake.score > best.score)
+          best = snake;
+          
+        if (snake.score > showing.score)
           showing = snake;
       }
   	}
   	
   	if (alive == 0) {
       calculateFitness();
-      updateStats();
-      saveProgress();
+      updateAndSaveProgress();
   	  reproduce();
+      reset();
       showing = null;
   	  newRecord = false;
   	}
   }
   
-  private void updateStats() {
-    int best = findBest();
-    updateStats(best);
+  private void updateAndSaveProgress() {
+    updateStats();
+    Serializer.save(peoplePath, serialize());
+    
+    Champion champ = (Champion) Serializer.load(championPath);
+    if (champ == null || best.score > champ.score) {
+      SerializableModel brain = best.brain.serialize();
+      champ = new Champion(brain, best.score, best.fitness());
+      Serializer.save(championPath, champ);
+    }
   }
   
   private SerializablePopulation serialize() {
-    SerializableSnake[] serialSnakes = new SerializableSnake[snakes.length];
+    SerializableModel[] serialBrains = new SerializableModel[snakes.length];
     for (int i = 0; i < snakes.length; i++)
-      serialSnakes[i] = snakes[i].serialize();
-    return new SerializablePopulation(serialSnakes, highscore, bestFitness, generation);
-  }
-  
-  public void saveProgress() {
-    try {
-      OutputStream out = createOutput(peoplePath);
-      ObjectOutputStream stream = new ObjectOutputStream(out);
-      stream.writeObject(serialize());
-      stream.close();
-    } catch(IOException e) {
-      println("Unable to save the model!");
-      e.printStackTrace();
-    }
+      serialBrains[i] = snakes[i].brain.serialize();
+    return new SerializablePopulation(serialBrains, generation);
   }
   
   private void registerChild(SmartSnake[] snakes, int idx, SmartSnake child) {
@@ -118,13 +114,10 @@ class Population {
   	}
   }
   
-  private int findBest() {
-    return new Matrix(fitness).argmax().value;
-  }
-  
-  private void updateStats(int best) {
-    if (fitness[best] > bestFitness) {
-      bestFitness = fitness[best];
+  private void updateStats() {
+    float best = new Matrix(fitness).max();
+    if (best > bestFitness) {
+      bestFitness = best;
       newFitness = true;
     } else newFitness = false; 
   }
@@ -159,20 +152,5 @@ class Population {
   
   public SmartSnake getShowing() {
     return showing;
-  }
-}
-
-Population loadFromFile(String path) {
-  try {
-    InputStream in = createInput(path);
-    if (in == null) return null;
-    ObjectInputStream stream = new ObjectInputStream(in);
-    SerializablePopulation serialPeople = (SerializablePopulation) stream.readObject();
-    stream.close();
-    return new Population(serialPeople);
-  } catch(IOException | ClassNotFoundException e) {
-    println("Unable to load the model!");
-    e.printStackTrace();
-    return null;
   }
 }

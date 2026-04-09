@@ -99,6 +99,10 @@ class Matrix {
     return maxIndex;
   }
   
+  public float max() {
+    return get(argmax());
+  }
+  
   public void mutate(float rate) {
     internalMap(index -> {
       if (random(1) < rate)

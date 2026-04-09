@@ -2,17 +2,11 @@ class Scene {
   private int rows, cols;
   private int[][] board;
   private MatrixIndex food;
-  private boolean replay;
-  
-  private ArrayList<MatrixIndex> foodHistory;
-  private int historyIndex;
   
   public Scene() {
     rows = boardRows;
     cols = boardCols;
-    
     board = new int[rows][cols];
-    foodHistory = new ArrayList<>();
     init();
   }
   
@@ -24,28 +18,17 @@ class Scene {
       board[i][0] = board[i][cols-1] = 1;
   }
   
-  public void replay() {
-    board[food.row][food.col] = 0;
-    food = null;
-    replay = true;
-    historyIndex = 0;
-  }
-  
   public void update() {
     if (food == null) spawnFood();
   }
   
   private void spawnFood() {
-    if (replay) food = foodHistory.get(historyIndex++);
-    else {
-      int row, col;
-      do {
-        row = (int) random(rows);
-        col = (int) random(cols);
-      } while(board[row][col] != 0);
-      food = new MatrixIndex(row, col, cols);
-      foodHistory.add(food);
-    }
+    int row, col;
+    do {
+      row = (int) random(rows);
+      col = (int) random(cols);
+    } while(board[row][col] != 0);
+    food = new MatrixIndex(row, col, cols);
     board[food.row][food.col] = 3;
   }
   

@@ -6,14 +6,21 @@ boolean pause = false;
 
 Population people;
 float mutationRate = 0.03;
-String peoplePath = "population.dat";
+int maxSteps = 800;
+String peoplePath, championPath;
 
 void setup() {
   size(1280, 720);
+  peoplePath = dataPath("population.dat");
+  championPath = dataPath("champion.dat");
+  
   spotSize = (float) sceneSize/boardCols;
-  people = loadFromFile(peoplePath);
-  if (people == null)
-    people = new Population(2000);
+  SerializablePopulation serialPeople = 
+    (SerializablePopulation) Serializer.load(peoplePath);
+  if (serialPeople != null)
+    people = new Population(serialPeople);
+  else people = new Population(2000);
+  people.reset();
 }
 
 void draw() {
